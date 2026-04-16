@@ -1,0 +1,202 @@
+<?xml version="1.0" ?>
+<sdf version="1.4">
+  <world name="default">
+    <include><uri>model://sun</uri></include>
+    <include><uri>model://ground_plane</uri></include>
+
+    <model name="wall_south_1">
+      <static>true</static>
+      <pose>1.65 0.0 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>3.3 0.05 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>3.3 0.05 0.5</size></box></geometry><material><ambient>0.8 0.8 0.8 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="wall_south_2">
+      <static>true</static>
+      <pose>3.3 0.1 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.05 0.2 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.05 0.2 0.5</size></box></geometry><material><ambient>0.8 0.8 0.8 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="wall_south_3">
+      <static>true</static>
+      <pose>4.255 0.2 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>1.91 0.05 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>1.91 0.05 0.5</size></box></geometry><material><ambient>0.8 0.8 0.8 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="wall_north">
+      <static>true</static>
+      <pose>2.605 2.75 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>5.21 0.05 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>5.21 0.05 0.5</size></box></geometry><material><ambient>0.8 0.8 0.8 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="wall_west">
+      <static>true</static>
+      <pose>0.0 1.375 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.05 2.75 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.05 2.75 0.5</size></box></geometry><material><ambient>0.8 0.8 0.8 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="wall_east">
+      <static>true</static>
+      <pose>5.21 1.375 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision"><geometry><box><size>0.05 2.75 0.5</size></box></geometry></collision>
+        <visual name="visual"><geometry><box><size>0.05 2.75 0.5</size></box></geometry><material><ambient>0.8 0.8 0.8 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="waypoint_0">
+      <static>true</static>
+      <pose>0.1 0.2 0.05 0 0 0</pose>
+      <link name="link">
+        <visual name="visual"><geometry><cylinder><radius>0.05</radius><length>0.1</length></cylinder></geometry><material><ambient>1 0 0 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="waypoint_1">
+      <static>true</static>
+      <pose>1.8 0.7 0.05 0 0 0</pose>
+      <link name="link">
+        <visual name="visual"><geometry><cylinder><radius>0.05</radius><length>0.1</length></cylinder></geometry><material><ambient>0 0 1 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="waypoint_2">
+      <static>true</static>
+      <pose>3.31 0.9 0.05 0 0 0</pose>
+      <link name="link">
+        <visual name="visual"><geometry><cylinder><radius>0.05</radius><length>0.1</length></cylinder></geometry><material><ambient>0 0 1 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="waypoint_3">
+      <static>true</static>
+      <pose>3.21 2.70 0.05 0 0 0</pose>
+      <link name="link">
+        <visual name="visual"><geometry><cylinder><radius>0.05</radius><length>0.1</length></cylinder></geometry><material><ambient>1 0 0 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="waypoint_4">
+      <static>true</static>
+      <pose>5.1 0.3 0.05 0 0 0</pose>
+      <link name="link">
+        <visual name="visual"><geometry><cylinder><radius>0.05</radius><length>0.1</length></cylinder></geometry><material><ambient>1 0 0 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="waypoint_5">
+      <static>true</static>
+      <pose>0.8 2.70 0.05 0 0 0</pose>
+      <link name="link">
+        <visual name="visual"><geometry><cylinder><radius>0.05</radius><length>0.1</length></cylinder></geometry><material><ambient>0 1 0 1</ambient></material></visual>
+      </link>
+    </model>
+
+    <model name="waypoint_6">
+      <static>true</static>
+      <pose>3.81 1.85 0.05 0 0 0</pose>
+      <link name="link">
+        <visual name="visual"><geometry><cylinder><radius>0.05</radius><length>0.1</length></cylinder></geometry><material><ambient>0 1 0 1</ambient></material></visual>
+      </link>
+    </model>
+
+
+    <model name="equipment_valve0">
+      <static>true</static>
+      <pose>1.8 0.8 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.5 0.2 0.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 0.2 0.5</size></box></geometry>
+          <material><ambient>1 0.5 0 1</ambient></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="equipment_valve1">
+      <static>true</static>
+      <pose>3.31 0.8 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.5 0.2 0.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 0.2 0.5</size></box></geometry>
+          <material><ambient>1 0.5 0 1</ambient></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="equipment_pump1">
+      <static>true</static>
+      <pose>3.81 1.95 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.4 0.2 0.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.4 0.2 0.5</size></box></geometry>
+          <material><ambient>1 0.5 0 1</ambient></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="obstacle_1">
+      <static>true</static>
+      <pose>1.3 1.85 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.2 0.4 0.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.2 0.4 0.5</size></box></geometry>
+          <material><ambient>0.5 0.5 0.5 1</ambient></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="obstacle_2">
+      <static>true</static>
+      <pose>2.7 1.85 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.4 0.4 0.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.4 0.4 0.5</size></box></geometry>
+          <material><ambient>0.5 0.5 0.5 1</ambient></material>
+        </visual>
+      </link>
+    </model>
+
+    <model name="wall_west_protrusion">
+      <static>true</static>
+      <pose>0.25 1.1 0.25 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.5 0.2 0.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.5 0.2 0.5</size></box></geometry>
+          <material><ambient>0.8 0.8 0.8 1</ambient></material>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>

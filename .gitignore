@@ -1,0 +1,27 @@
+# Assignment PDF
+CompAssignment4.pdf
+
+# Archives
+*.zip
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.eggs/
+
+# ROS build artifacts
+build/
+devel/
+logs/
+*.pyc
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
