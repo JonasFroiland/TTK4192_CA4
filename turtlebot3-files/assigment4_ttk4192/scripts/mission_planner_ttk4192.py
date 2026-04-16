@@ -140,11 +140,14 @@ class turtlebot_move():
         self.stop()
         rospy.logwarn("Action done.")
 
+
         # plot trajectory
-        data = np.array(self.trajectory)
-        np.savetxt('trajectory.csv', data, fmt='%f', delimiter=',')
-        plt.plot(data[:,0],data[:,1])
-        plt.show()
+        ####################################
+        #data = np.array(self.trajectory)
+        #np.savetxt('trajectory.csv', data, fmt='%f', delimiter=',')
+        #plt.plot(data[:,0],data[:,1])
+        #plt.show()
+        ####################################
 
 
     def move_to_point(self, x, y):
@@ -652,6 +655,16 @@ WP4 = [5.1,  0.3 ]
 WP5 = [0.8,  2.70]
 WP6 = [3.81, 1.85]
 
+WP_ANGLE = {
+    "waypoint0": 0.0,
+    "waypoint1": pi/2,      # face valve0
+    "waypoint2": -pi/2,     # face valve1
+    "waypoint3": 0.0,
+    "waypoint4": 0.0,
+    "waypoint5": pi/2,      # face pump0
+    "waypoint6": pi/2       # face pump1
+}
+
 #4) Program here the turtlebot actions (based in your AI planner)
 """
 Turtlebot 3 actions-------------------------------------------------------------------------
@@ -713,7 +726,8 @@ def taking_photo_exe():
     g='photo'+dt_string+'.jpg'
     
 
-    shutil.move(file_source + g, file_destination)
+    #shutil.move(file_source + g, file_destination)
+    shutil.move(file_source + g, file_destination + '/' + g)
     rospy.sleep(1)
 
 def move_robot_waypoint0_waypoint1():
@@ -724,6 +738,85 @@ def move_robot_waypoint0_waypoint1():
     compute_path(WP0, WP1, heading_from=heading, heading_to=heading)
     print("Executing path following")
     turtlebot_move()
+    
+    
+def get_closest_waypoint(x, y):
+    waypoints = {
+        "waypoint0": WP0,
+        "waypoint1": WP1,
+        "waypoint2": WP2,
+        "waypoint3": WP3,
+        "waypoint4": WP4,
+        "waypoint5": WP5,
+        "waypoint6": WP6
+    }
+
+    closest_wp = None
+    min_dist = float('inf')
+
+    for name, wp in waypoints.items():
+        dx = wp[0] - x
+        dy = wp[1] - y
+        dist = sqrt(dx*dx + dy*dy)
+
+        if dist < min_dist:
+            min_dist = dist
+            closest_wp = name
+
+    return closest_wp
+    
+
+def get_current_pose():
+    odom_msg = rospy.wait_for_message("odom", Odometry)
+    x = odom_msg.pose.pose.position.x
+    y = odom_msg.pose.pose.position.y
+
+    quat = [
+        odom_msg.pose.pose.orientation.x,
+        odom_msg.pose.pose.orientation.y,
+        odom_msg.pose.pose.orientation.z,
+        odom_msg.pose.pose.orientation.w
+    ]
+    (_, _, theta) = tf.transformations.euler_from_quaternion(quat)
+
+    return x, y, theta
+    
+
+def rotate_to_heading(target_theta):
+    vel_pub = rospy.Publisher('cmd_vel', Twist, queue_size=10)
+    vel = Twist()
+    rate = rospy.Rate(10)
+
+    while not rospy.is_shutdown():
+        odom_msg = rospy.wait_for_message("odom", Odometry)
+
+        quat = [
+            odom_msg.pose.pose.orientation.x,
+            odom_msg.pose.pose.orientation.y,
+            odom_msg.pose.pose.orientation.z,
+            odom_msg.pose.pose.orientation.w
+        ]
+        (_, _, current_theta) = tf.transformations.euler_from_quaternion(quat)
+
+        error = target_theta - current_theta
+        if error > pi:
+            error -= 2*pi
+        elif error < -pi:
+            error += 2*pi
+
+        if abs(error) < 0.05:
+            break
+
+        vel.linear.x = 0.0
+        vel.angular.z = max(min(1.5 * error, 0.3), -0.3)
+        vel_pub.publish(vel)
+        rate.sleep()
+
+    vel.linear.x = 0.0
+    vel.angular.z = 0.0
+    vel_pub.publish(vel)
+    rospy.sleep(1)
+
 
 
 def Manipulate_OpenManipulator_x():
@@ -888,7 +981,7 @@ if __name__ == '__main__':
            #time.sleep()
            #print("No valid option")
            print(" ---Skipping AI planner, testing GNC only --- ")
-           plan_general = ["move_robot waypoint0 waypoint1"]
+           plan_general = ["move_robot waypoint0 waypoint1", "taking_photo"]
    
     
         # 5.2) Reading the plan 
@@ -908,39 +1001,39 @@ if __name__ == '__main__':
         task_total=len(plan_general)
         i_ini=0
         while i_ini < task_total:
-            move_robot_waypoint0_waypoint1()
-            #taking_photo_exe()
-
-            plan_temp=plan_general[i_ini].split()
+            plan_temp = plan_general[i_ini].split()
             print(plan_temp)
-            if plan_temp[0]=="check_pump_picture_ir":
+
+            if plan_temp[0] == "move_robot":
+                print("Executing move_robot action")
+                move_robot_waypoint0_waypoint1()
+
+            elif plan_temp[0] == "taking_photo":
+                print("Executing taking_photo action")
+                robot_x, robot_y, _ = get_current_pose()
+                closest_wp = get_closest_waypoint(robot_x, robot_y)
+                print("Closest waypoint:", closest_wp)
+                target_theta = WP_ANGLE[closest_wp]
+                rotate_to_heading(target_theta)
+                taking_photo_exe()
+
+            elif plan_temp[0] == "check_pump_picture_ir":
                 print("Inspect -pump")
                 time.sleep(1)
 
-            if plan_temp[0]=="check_seals_valve_picture_eo":
+            elif plan_temp[0] == "check_seals_valve_picture_eo":
                 print("check-valve-EO")
-
                 time.sleep(1)
 
-            if plan_temp[0]=="move_robot":
-                print("move_robot_waypoints")
-
+            elif plan_temp[0] == "move_charge_robot":
+                print("Going to recharge robot")
                 time.sleep(1)
 
-            if plan_temp[0]=="move_charge_robot":
-                print("")
-                print("Going to rechard robot")
-
-                time.sleep(1)
-
-            if plan_temp[0]=="charge_battery":
-                print(" ")
+            elif plan_temp[0] == "charge_battery":
                 print("charging battery")
-
                 time.sleep(1)
 
-
-            i_ini=i_ini+1  # Next tasks
+            i_ini = i_ini + 1
 
 
         print("")
