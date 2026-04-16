@@ -8,7 +8,7 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from math import pi, sqrt, atan2, tan
 from os import system, name
-from time import time
+import time
 import re
 import fileinput
 import sys
@@ -134,7 +134,7 @@ class turtlebot_move():
         self.trajectory = list()
 
         # track a sequence of waypoints
-        for point in WAYPOINTS:
+        for point in WAYPOINTS[1:]:
             self.move_to_point(point[0], point[1])
             rospy.sleep(1)
         self.stop()
@@ -153,8 +153,13 @@ class turtlebot_move():
 
         diff_x = x - self.x
         diff_y = y - self.y
-        direction_vector = np.array([diff_x, diff_y])
-        direction_vector = direction_vector/sqrt(diff_x*diff_x + diff_y*diff_y)  # normalization
+        #direction_vector = np.array([diff_x, diff_y])
+        #direction_vector = direction_vector/sqrt(diff_x*diff_x + diff_y*diff_y)  # normalization
+        dist = sqrt(diff_x*diff_x + diff_y*diff_y)
+        if dist < 0.05:
+        	return
+        direction_vector = np.array([diff_x, diff_y]) / dist
+        
         theta = atan2(diff_y, diff_x)
 
         # We should adopt different parameters for different kinds of movement
@@ -701,9 +706,12 @@ def taking_photo_exe():
     # Sleep to give the last log messages time to be sent
 
 	# saving photo in a desired directory
-    file_source = '/home/miguel/catkin_ws/'
-    file_destination = '/home/miguel/catkin_ws/src/assigment4_ttk4192/scripts'
+    home_dir = os.path.expanduser("~")
+    file_source = home_dir + '/catkin_ws/'
+    file_destination = home_dir + '/catkin_ws/src/assigment4_ttk4192/scripts'
+    
     g='photo'+dt_string+'.jpg'
+    
 
     shutil.move(file_source + g, file_destination)
     rospy.sleep(1)
@@ -822,18 +830,21 @@ if __name__ == '__main__':
         # aea 3
         # aea 4
         
-
-		# 5.1) Starting the AI Planner
        
-        a_plan=1    
+        a_plan=0   
+        
+        # 5.1) Starting the AI Planner
         if a_plan==1:
            print(" ---Executing Graph planner --- ")
            time.sleep(1)
+   
            if len(sys.argv) != 1 and len(sys.argv) != 3:
                 print("Usage: GraphPlan.py domainName problemName")
                 exit()
-            # Here you need to load your PDDL domain
-           dir_p="/home/miguel/catkin_ws/src/assigment4_ttk4192/scripts/ai_planner_modules/PDDL_domain/"
+                
+           # Here you need to load your PDDL domain
+           home = os.path.expanduser("~")
+           dir_p = home + "/catkin_ws/src/assigment4_ttk4192/scripts/ai_planner_modules/PDDL_domain/"
            domain = dir_p+"PDDL_domain_1.pddl"
            problem = dir_p+"PDDL_problem_1.pddl"
            if len(sys.argv) == 3:
@@ -845,7 +856,8 @@ if __name__ == '__main__':
            elapsed = time.time() - start
            plan=np.array(plan)
            l=[]
-            #print([plan.action for action in plan])
+           
+           #print([plan.action for action in plan])
            if plan is not None:
                 print("Plan found with %d actions in %.2f seconds" %
                     (len([act for act in plan if not act.isNoOp()]), elapsed))            
@@ -873,8 +885,10 @@ if __name__ == '__main__':
                    plan_general[i]="making_turn"
            print("Plan: ",plan_general)
         else:
-           time.sleep()
-           print("No valid option")
+           #time.sleep()
+           #print("No valid option")
+           print(" ---Skipping AI planner, testing GNC only --- ")
+           plan_general = ["move_robot waypoint0 waypoint1"]
    
     
         # 5.2) Reading the plan 
