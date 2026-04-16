@@ -672,62 +672,37 @@ Turtlebot 3 actions-------------------------------------------------------------
 
 class TakePhoto:
     def __init__(self):
-
         self.bridge = CvBridge()
-        self.image_received = False
 
-        # Connect image topic
-        img_topic = "/camera/rgb/image_raw"
-        self.image_sub = rospy.Subscriber(img_topic, Image, self.callback)
-
-        # Allow up to one second to connection
-        rospy.sleep(1)
-
-    def callback(self, data):
-
-        # Convert image to OpenCV format
+    def take_picture(self, img_path, timeout=5.0):
         try:
-            cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
-        except CvBridgeError as e:
-            print(e)
-
-        self.image_received = True
-        self.image = cv_image
-
-    def take_picture(self, img_title):
-        if self.image_received:
-            # Save an image
-            cv2.imwrite(img_title, self.image)
-            return True
-        else:
+            msg = rospy.wait_for_message("/camera/image", Image, timeout=timeout)
+            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
+            ok = cv2.imwrite(img_path, cv_image)
+            return ok
+        except Exception as e:
+            rospy.logerr("Failed to capture image: %s", str(e))
             return False
-        
+
+
 def taking_photo_exe():
-    # Initialize
     camera = TakePhoto()
 
-    # Default value is 'photo.jpg'
     now = datetime.now()
     dt_string = now.strftime("%d%m%Y_%H%M%S")
-    img_title = rospy.get_param('~image_title', 'photo'+dt_string+'.jpg')
+    filename = "photo" + dt_string + ".jpg"
 
-    if camera.take_picture(img_title):
-        rospy.loginfo("Saved image " + img_title)
-    else:
-        rospy.loginfo("No images received")
-	#eog photo.jpg
-    # Sleep to give the last log messages time to be sent
-
-	# saving photo in a desired directory
     home_dir = os.path.expanduser("~")
-    file_source = home_dir + '/catkin_ws/'
-    file_destination = home_dir + '/catkin_ws/src/assigment4_ttk4192/scripts'
-    
-    g='photo'+dt_string+'.jpg'
-    
+    file_destination = home_dir + "/catkin_ws/src/assigment4_ttk4192/scripts"
+    img_path = os.path.join(file_destination, filename)
 
-    #shutil.move(file_source + g, file_destination)
-    shutil.move(file_source + g, file_destination + '/' + g)
+    os.makedirs(file_destination, exist_ok=True)
+
+    if camera.take_picture(img_path, timeout=5.0):
+        rospy.loginfo("Saved image " + img_path)
+    else:
+        rospy.loginfo("No image captured, photo not saved")
+
     rospy.sleep(1)
 
 def move_robot_waypoint0_waypoint1():
