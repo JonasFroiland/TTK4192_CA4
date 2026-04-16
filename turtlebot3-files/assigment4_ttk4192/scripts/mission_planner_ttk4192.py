@@ -834,8 +834,8 @@ if __name__ == '__main__':
                 exit()
             # Here you need to load your PDDL domain
            dir_p="/home/miguel/catkin_ws/src/assigment4_ttk4192/scripts/ai_planner_modules/PDDL_domain/"
-           domain = dir_p+"dwrDomain_turtlebot.txt"
-           problem = dir_p+"dwrProblem_turtlebot.txt"
+           domain = dir_p+"PDDL_domain_1.pddl"
+           problem = dir_p+"PDDL_problem_1.pddl"
            if len(sys.argv) == 3:
                 domain = str(sys.argv[1])
                 problem = str(sys.argv[2])
