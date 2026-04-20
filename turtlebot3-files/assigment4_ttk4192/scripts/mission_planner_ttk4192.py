@@ -117,7 +117,7 @@ class turtlebot_move():
     Path-following module
     """
     def __init__(self):
-        rospy.init_node('turtlebot_move', anonymous=False)
+        #rospy.init_node('turtlebot_move', anonymous=False)
         rospy.loginfo("Press CTRL + C to terminate")
         rospy.on_shutdown(self.stop)
 
@@ -134,11 +134,11 @@ class turtlebot_move():
         self.trajectory = list()
 
         # track a sequence of waypoints
-        for point in WAYPOINTS[1:]:
-            self.move_to_point(point[0], point[1])
-            rospy.sleep(1)
-        self.stop()
-        rospy.logwarn("Action done.")
+        #for point in WAYPOINTS[1:]:
+        #    self.move_to_point(point[0], point[1])
+        #    rospy.sleep(1)
+        #self.stop()
+        #rospy.logwarn("Action done.")
 
 
         # plot trajectory
@@ -149,6 +149,13 @@ class turtlebot_move():
         #plt.show()
         ####################################
 
+    def follow_waypoints(self, waypoints):
+        for point in waypoints[1:]:
+            self.move_to_point(point[0], point[1])
+            rospy.sleep(1)
+
+        self.stop()
+        rospy.logwarn("Action done.")
 
     def move_to_point(self, x, y):
         # Here must be improved the path-following ---
@@ -161,7 +168,7 @@ class turtlebot_move():
         dist = sqrt(diff_x*diff_x + diff_y*diff_y)
         if dist < 0.05:
         	return
-        direction_vector = np.array([diff_x, diff_y]) / dist
+        direction_vector = np.array([diff_x, diff_y])/dist
         
         theta = atan2(diff_y, diff_x)
 
@@ -622,10 +629,11 @@ def main_hybrid_a(heu, start_pos, end_pos, reverse, extra, grid_on):
             _car.set_zorder(3)
         return _branches, _path, _carl, _path1, _car
 
-    ani = animation.FuncAnimation(fig, animate, init_func=init,
-                                  frames=frames, interval=1,
-                                  repeat=True, blit=True)
-    plt.show()
+    # ani = animation.FuncAnimation(fig, animate, init_func=init,
+    #                               frames=frames, interval=1,
+    #                               repeat=True, blit=True)
+    # plt.show()
+    plt.close(fig)
 
 
 # Fix 4 and 6 — updated compute_path using real waypoint coordinates
@@ -655,6 +663,16 @@ WP4 = [5.1,  0.3 ]
 WP5 = [0.8,  2.70]
 WP6 = [3.81, 1.85]
 
+WAYPOINT_MAP = {
+    "waypoint0": WP0,
+    "waypoint1": WP1,
+    "waypoint2": WP2,
+    "waypoint3": WP3,
+    "waypoint4": WP4,
+    "waypoint5": WP5,
+    "waypoint6": WP6,
+}
+
 WP_ANGLE = {
     "waypoint0": 0.0,
     "waypoint1": pi/2,      # face valve0
@@ -665,32 +683,34 @@ WP_ANGLE = {
     "waypoint6": pi/2       # face pump1
 }
 
+
 #4) Program here the turtlebot actions (based in your AI planner)
 """
 Turtlebot 3 actions-------------------------------------------------------------------------
 """
-
+        
 class TakePhoto:
-    def __init__(self):
+    def __init__(self, topic_name="/camera/rgb/image_raw"):
         self.bridge = CvBridge()
+        self.topic_name = topic_name
 
     def take_picture(self, img_path, timeout=5.0):
         try:
-            msg = rospy.wait_for_message("/camera/image", Image, timeout=timeout)
-            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
+            msg = rospy.wait_for_message(self.topic_name, Image, timeout=timeout)
+            cv_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
             ok = cv2.imwrite(img_path, cv_image)
             return ok
         except Exception as e:
-            rospy.logerr("Failed to capture image: %s", str(e))
+            rospy.logerr("Failed to capture image from %s: %s", self.topic_name, str(e))
             return False
+ 
 
-
-def taking_photo_exe():
-    camera = TakePhoto()
+def take_inspection_image_EO(prefix, topic_name="/camera/rgb/image_raw"):
+    camera = TakePhoto(topic_name)
 
     now = datetime.now()
     dt_string = now.strftime("%d%m%Y_%H%M%S")
-    filename = "photo" + dt_string + ".jpg"
+    filename = prefix + dt_string + ".jpg"
 
     home_dir = os.path.expanduser("~")
     file_destination = home_dir + "/catkin_ws/src/assigment4_ttk4192/scripts"
@@ -703,18 +723,89 @@ def taking_photo_exe():
     else:
         rospy.loginfo("No image captured, photo not saved")
 
-    rospy.sleep(1)
+    rospy.sleep(1)    
 
-def move_robot_waypoint0_waypoint1():
-    print("Computing Hybrid A* path WP0 -> WP1")
-    dx = WP1[0] - WP0[0]
-    dy = WP1[1] - WP0[1]
+
+# Move the robot
+#def move_robot_waypoint0_waypoint1():
+#    print("Computing Hybrid A* path WP0 -> WP1")
+#    dx = WP1[0] - WP0[0]
+#    dy = WP1[1] - WP0[1]
+#    heading = float(np.arctan2(dy, dx))
+#    compute_path(WP0, WP1, heading_from=heading, heading_to=heading)
+#    print("Executing path following")
+#    turtlebot_move()
+def move_robot_between_waypoints(from_wp_name, to_wp_name, controller):
+    if from_wp_name not in WAYPOINT_MAP or to_wp_name not in WAYPOINT_MAP:
+        print(f"Unknown waypoint(s): {from_wp_name}, {to_wp_name}")
+        time.sleep(1)
+        return
+
+    wp_from = WAYPOINT_MAP[from_wp_name]
+    wp_to = WAYPOINT_MAP[to_wp_name]
+
+    print(f"Computing Hybrid A* path {from_wp_name} -> {to_wp_name}")
+
+    dx = wp_to[0] - wp_from[0]
+    dy = wp_to[1] - wp_from[1]
     heading = float(np.arctan2(dy, dx))
-    compute_path(WP0, WP1, heading_from=heading, heading_to=heading)
-    print("Executing path following")
-    turtlebot_move()
+
+    compute_path(wp_from, wp_to, heading_from=heading, heading_to=heading)
+
+    print(f"Executing path following {from_wp_name} -> {to_wp_name}")
+    controller.follow_waypoints(WAYPOINTS)
     
-    
+
+def making_turn_exe():
+    print("Executing Make a turn")
+    time.sleep(1)
+    #Starts a new node
+    #rospy.init_node('turtlebot_move', anonymous=True)
+    velocity_publisher = rospy.Publisher('cmd_vel', Twist, queue_size=10)
+    vel_msg = Twist()
+
+    # Receiveing the user's input
+    print("Let's rotate your robot")
+    #speed = input("Input your speed (degrees/sec):")
+    #angle = input("Type your distance (degrees):")
+    #clockwise = input("Clockwise?: ") #True or false
+
+    speed = 5
+    angle = 180
+    clockwise = True
+
+    #Converting from angles to radians
+    angular_speed = speed*2*pi/360
+    relative_angle = angle*2*pi/360
+
+    #We wont use linear components
+    vel_msg.linear.x=0
+    vel_msg.linear.y=0
+    vel_msg.linear.z=0
+    vel_msg.angular.x = 0
+    vel_msg.angular.y = 0
+
+    # Checking if our movement is CW or CCW
+    if clockwise:
+        vel_msg.angular.z = -abs(angular_speed)
+    else:
+        vel_msg.angular.z = abs(angular_speed)
+    # Setting the current time for distance calculus
+    t0 = rospy.Time.now().to_sec()
+    current_angle = 0   #should be from the odometer
+
+    while(current_angle < relative_angle):
+        velocity_publisher.publish(vel_msg)
+        t1 = rospy.Time.now().to_sec()
+        current_angle = angular_speed*(t1-t0)
+
+    #Forcing our robot to stop
+    vel_msg.angular.z = 0
+    velocity_publisher.publish(vel_msg)
+    #rospy.spin()
+
+
+# Rotate to task
 def get_closest_waypoint(x, y):
     waypoints = {
         "waypoint0": WP0,
@@ -793,91 +884,47 @@ def rotate_to_heading(target_theta):
     rospy.sleep(1)
 
 
+# Take EO and IR pictures
+def taking_photo_exe():
+    take_inspection_image_EO("photo_")
 
-def Manipulate_OpenManipulator_x():
-    print("Executing manipulate a weight")
-    time.sleep(5)
 
-def making_turn_exe():
-    print("Executing Make a turn")
-    time.sleep(1)
-    #Starts a new node
-    #rospy.init_node('turtlebot_move', anonymous=True)
-    velocity_publisher = rospy.Publisher('cmd_vel', Twist, queue_size=10)
-    vel_msg = Twist()
+def check_pump_picture_ir():
+    print("Taking IR picture using EO camera ...")
+    take_inspection_image_EO("pump_ir_")
 
-    # Receiveing the user's input
-    print("Let's rotate your robot")
-    #speed = input("Input your speed (degrees/sec):")
-    #angle = input("Type your distance (degrees):")
-    #clockwise = input("Clockwise?: ") #True or false
 
-    speed = 5
-    angle = 180
-    clockwise = True
+def check_seals_valve_picture_eo():
+    print("Taking EO picture ...")
+    take_inspection_image_EO("valve_eo_")
 
-    #Converting from angles to radians
-    angular_speed = speed*2*pi/360
-    relative_angle = angle*2*pi/360
-
-    #We wont use linear components
-    vel_msg.linear.x=0
-    vel_msg.linear.y=0
-    vel_msg.linear.z=0
-    vel_msg.angular.x = 0
-    vel_msg.angular.y = 0
-
-    # Checking if our movement is CW or CCW
-    if clockwise:
-        vel_msg.angular.z = -abs(angular_speed)
-    else:
-        vel_msg.angular.z = abs(angular_speed)
-    # Setting the current time for distance calculus
-    t0 = rospy.Time.now().to_sec()
-    current_angle = 0   #should be from the odometer
-
-    while(current_angle < relative_angle):
-        velocity_publisher.publish(vel_msg)
-        t1 = rospy.Time.now().to_sec()
-        current_angle = angular_speed*(t1-t0)
-
-    #Forcing our robot to stop
-    vel_msg.angular.z = 0
-    velocity_publisher.publish(vel_msg)
-    #rospy.spin()
-
-def check_pump_picture_ir_waypoint0():
-    a=0
-    while a<3:
-        print("Taking IR picture at waypoint0 ...")
-        time.sleep(1)
-        a=a+1
-    time.sleep(5)
-
-def check_seals_valve_picture_eo_waypoint0():
-    a=0
-    while a<3:
-        print("Taking EO picture at waypoint0 ...")
-        time.sleep(1)
-        a=a+1
-    time.sleep(5)
 
 # Charging battery 
-def charge_battery_waypoint0():
-    print("chargin battert")
+def charge_battery():
+    print("Charging battery ...")
     time.sleep(5)
+    print("Battery charged")
+
+
+# Manipulate the robot arm
+def Manipulate_OpenManipulator_x():
+    print("Executing manipulate the robot arm to open valve x")
+    time.sleep(5)
+
 
 
 # Define the global varible: WAYPOINTS  Wpts=[[x_i,y_i]];
 global WAYPOINTS
-WAYPOINTS = [[1,1],[2,2]]
-
+#WAYPOINTS = [[1,1],[2,2]]
+WAYPOINTS = np.array([WP0, WP1])
 
 # 5) Program here the main commands of your mission planner code
 """ Main code ---------------------------------------------------------------------------
 """
 if __name__ == '__main__':
     try:
+        rospy.init_node('mission_planner_ttk4192', anonymous=False)
+        controller = turtlebot_move()
         print()
         print("************ TTK4192 - Assigment 4 **************************")
         print()
@@ -956,8 +1003,13 @@ if __name__ == '__main__':
            #time.sleep()
            #print("No valid option")
            print(" ---Skipping AI planner, testing GNC only --- ")
-           plan_general = ["move_robot waypoint0 waypoint1", "taking_photo"]
-   
+           #plan_general = ["move_robot waypoint0 waypoint1", "taking_photo"]
+           plan_general = [
+                "move_robot turtlebot0 waypoint0 waypoint1 d01",
+                "move_robot turtlebot0 waypoint1 waypoint2 d12",
+                "taking_photo"
+            ]
+            
     
         # 5.2) Reading the plan 
         print("  ")
@@ -974,6 +1026,7 @@ if __name__ == '__main__':
         battery=100
         task_finished=0
         task_total=len(plan_general)
+        
         i_ini=0
         while i_ini < task_total:
             plan_temp = plan_general[i_ini].split()
@@ -981,32 +1034,66 @@ if __name__ == '__main__':
 
             if plan_temp[0] == "move_robot":
                 print("Executing move_robot action")
-                move_robot_waypoint0_waypoint1()
+                if len(plan_temp) >= 4:
+                    from_wp = plan_temp[2]
+                    to_wp = plan_temp[3]
+                    move_robot_between_waypoints(from_wp, to_wp, controller)
+                else:
+                    print("Invalid move_robot format")
+                    time.sleep(1)
 
             elif plan_temp[0] == "taking_photo":
                 print("Executing taking_photo action")
+
                 robot_x, robot_y, _ = get_current_pose()
                 closest_wp = get_closest_waypoint(robot_x, robot_y)
                 print("Closest waypoint:", closest_wp)
+
                 target_theta = WP_ANGLE[closest_wp]
                 rotate_to_heading(target_theta)
+
                 taking_photo_exe()
 
             elif plan_temp[0] == "check_pump_picture_ir":
-                print("Inspect -pump")
-                time.sleep(1)
+                print("Executing check_pump_picture_ir action")
+
+                robot_x, robot_y, _ = get_current_pose()
+                closest_wp = get_closest_waypoint(robot_x, robot_y)
+                print("Closest waypoint:", closest_wp)
+
+                target_theta = WP_ANGLE[closest_wp]
+                rotate_to_heading(target_theta)
+
+                check_pump_picture_ir()
 
             elif plan_temp[0] == "check_seals_valve_picture_eo":
-                print("check-valve-EO")
-                time.sleep(1)
+                print("Executing check_seals_valve_picture_eo action")
 
-            elif plan_temp[0] == "move_charge_robot":
-                print("Going to recharge robot")
-                time.sleep(1)
+                robot_x, robot_y, _ = get_current_pose()
+                closest_wp = get_closest_waypoint(robot_x, robot_y)
+                print("Closest waypoint:", closest_wp)
+
+                target_theta = WP_ANGLE[closest_wp]
+                rotate_to_heading(target_theta)
+
+                check_seals_valve_picture_eo()
+            
+            elif plan_temp[0] == "manipulate_valve":
+                print("Executing manipulate_valve action")
+                Manipulate_OpenManipulator_x()
+
 
             elif plan_temp[0] == "charge_battery":
-                print("charging battery")
-                time.sleep(1)
+                print("Executing charge action")
+
+                robot_x, robot_y, _ = get_current_pose()
+                closest_wp = get_closest_waypoint(robot_x, robot_y)
+                print("Closest waypoint:", closest_wp)
+
+                target_theta = WP_ANGLE[closest_wp]
+                rotate_to_heading(target_theta)
+
+                charge_battery()
 
             i_ini = i_ini + 1
 

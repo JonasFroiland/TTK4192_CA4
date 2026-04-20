@@ -4,6 +4,7 @@
   (:objects
     turtlebot0 - robot
     camera_eo0 - camera_eo
+    camera_ir0 - camera_ir
     robot_arm0 - robot_arm
 
     valve0 valve1 - valve
@@ -153,13 +154,14 @@
 
     ;; equipment
     (available_equipment camera_eo0)
+    (available_equipment camera_ir0)
     (available_equipment robot_arm0)
 
     ;; initial task state
-    (no_valve_checked valve0)
-    (no_valve_checked valve1)
-    (no_photo pump0)
-    (no_photo pump1)
+    (no_valve_checked_eo valve0)
+    (no_valve_checked_eo valve1)
+    (no_photo_ir pump0)
+    (no_photo_ir pump1)
 
     ;; battery
     (battery_ok turtlebot0)
@@ -168,10 +170,10 @@
   (:goal
     (and
       (at turtlebot0 waypoint3)
-      (valve_checked valve0)
-      (valve_checked valve1)
-      (photo pump0)
-      (photo pump1)
+      (valve_checked_eo valve0)
+      (valve_checked_eo valve1)
+      (photo_ir pump0)
+      (photo_ir pump1)
     )
   )
 

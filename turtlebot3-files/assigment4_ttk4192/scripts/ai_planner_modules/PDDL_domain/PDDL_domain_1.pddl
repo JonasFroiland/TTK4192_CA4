@@ -4,7 +4,7 @@
   (:types
     subject route waypoint - object
     robot equipment valve pump charger - subject
-    camera_eo robot_arm - equipment
+    camera_eo camera_ir robot_arm - equipment
   )
 
   (:predicates
@@ -14,11 +14,11 @@
 
     (connects ?r - route ?from_wp - waypoint ?to_wp - waypoint)
 
-    (no_photo ?pmp - pump)
-    (photo ?pmp - pump)
+    (no_photo_ir ?pmp - pump)
+    (photo_ir ?pmp - pump)
 
-    (no_valve_checked ?vlv - valve)
-    (valve_checked ?vlv - valve)
+    (no_valve_checked_eo ?vlv - valve)
+    (valve_checked_eo ?vlv - valve)
 
     (no_manipulation ?vlv - valve)
     (manipulated ?vlv - valve)
@@ -45,36 +45,19 @@
     )
   )
 
-  (:durative-action inspect_valve
+  (:durative-action check_seals_valve_picture_EO
     :parameters (?rob - robot ?wp - waypoint ?cam - camera_eo ?vlv - valve)
     :duration (= ?duration 10)
     :condition (and
       (over all (at ?rob ?wp))
       (at start (at ?vlv ?wp))
       (at start (available_equipment ?cam))
-      (at start (no_valve_checked ?vlv))
+      (at start (no_valve_checked_eo ?vlv))
     )
     :effect (and
       (at start (not (available_equipment ?cam)))
-      (at start (not (no_valve_checked ?vlv)))
-      (at end (valve_checked ?vlv))
-      (at end (available_equipment ?cam))
-    )
-  )
-
-  (:durative-action take_picture_pump
-    :parameters (?rob - robot ?wp - waypoint ?cam - camera_eo ?pmp - pump)
-    :duration (= ?duration 10)
-    :condition (and
-      (over all (at ?rob ?wp))
-      (at start (at ?pmp ?wp))
-      (at start (available_equipment ?cam))
-      (at start (no_photo ?pmp))
-    )
-    :effect (and
-      (at start (not (available_equipment ?cam)))
-      (at start (not (no_photo ?pmp)))
-      (at end (photo ?pmp))
+      (at start (not (no_valve_checked_eo ?vlv)))
+      (at end (valve_checked_eo ?vlv))
       (at end (available_equipment ?cam))
     )
   )
@@ -86,7 +69,7 @@
       (over all (at ?rob ?wp))
       (at start (at ?vlv ?wp))
       (at start (available_equipment ?arm))
-      (at start (valve_checked ?vlv))
+      (at start (valve_checked_eo ?vlv))
       (at start (no_manipulation ?vlv))
     )
     :effect (and
@@ -97,7 +80,24 @@
     )
   )
 
-  (:durative-action charge_robot
+  (:durative-action check_pump_picture_ir
+    :parameters (?rob - robot ?wp - waypoint ?cam - camera_ir ?pmp - pump)
+    :duration (= ?duration 10)
+    :condition (and
+      (over all (at ?rob ?wp))
+      (at start (at ?pmp ?wp))
+      (at start (available_equipment ?cam))
+      (at start (no_photo_ir ?pmp))
+    )
+    :effect (and
+      (at start (not (available_equipment ?cam)))
+      (at start (not (no_photo_ir ?pmp)))
+      (at end (photo_ir ?pmp))
+      (at end (available_equipment ?cam))
+    )
+  )
+
+  (:durative-action charge_battery
     :parameters (?rob - robot ?wp - waypoint ?chg - charger)
     :duration (= ?duration 15)
     :condition (and
