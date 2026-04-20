@@ -25,3 +25,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+turtlebot3-files/.~lock.Lab_guide_2025-turtlebot3.docx#
+turtlebot3-files/PDDL_domain_1.pddl
+turtlebot3-files/PDDL_problem_1.pddl

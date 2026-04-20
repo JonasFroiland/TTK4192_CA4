@@ -68,7 +68,7 @@
 
     <model name="waypoint_1">
       <static>true</static>
-      <pose>1.8 0.7 0.05 0 0 0</pose>
+      <pose>1.8 0.6 0.05 0 0 0</pose>
       <link name="link">
         <visual name="visual"><geometry><cylinder><radius>0.05</radius><length>0.1</length></cylinder></geometry><material><ambient>0 0 1 1</ambient></material></visual>
       </link>
@@ -76,7 +76,7 @@
 
     <model name="waypoint_2">
       <static>true</static>
-      <pose>3.31 0.9 0.05 0 0 0</pose>
+      <pose>3.31 1.0 0.05 0 0 0</pose>
       <link name="link">
         <visual name="visual"><geometry><cylinder><radius>0.05</radius><length>0.1</length></cylinder></geometry><material><ambient>0 0 1 1</ambient></material></visual>
       </link>
@@ -84,7 +84,7 @@
 
     <model name="waypoint_3">
       <static>true</static>
-      <pose>3.21 2.70 0.05 0 0 0</pose>
+      <pose>3.21 2.60 0.05 0 0 0</pose>
       <link name="link">
         <visual name="visual"><geometry><cylinder><radius>0.05</radius><length>0.1</length></cylinder></geometry><material><ambient>1 0 0 1</ambient></material></visual>
       </link>
@@ -100,7 +100,7 @@
 
     <model name="waypoint_5">
       <static>true</static>
-      <pose>0.8 2.70 0.05 0 0 0</pose>
+      <pose>0.8 2.60 0.05 0 0 0</pose>
       <link name="link">
         <visual name="visual"><geometry><cylinder><radius>0.05</radius><length>0.1</length></cylinder></geometry><material><ambient>0 1 0 1</ambient></material></visual>
       </link>
@@ -108,7 +108,7 @@
 
     <model name="waypoint_6">
       <static>true</static>
-      <pose>3.81 1.85 0.05 0 0 0</pose>
+      <pose>3.81 1.75 0.05 0 0 0</pose>
       <link name="link">
         <visual name="visual"><geometry><cylinder><radius>0.05</radius><length>0.1</length></cylinder></geometry><material><ambient>0 1 0 1</ambient></material></visual>
       </link>
