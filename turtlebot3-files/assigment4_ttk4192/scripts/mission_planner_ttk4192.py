@@ -27,6 +27,10 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import shutil
 import copy
+import subprocess
+import actionlib
+from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 # Import here the packages used in your codes
 
 """ ----------------------------------------------------------------------------------
@@ -519,7 +523,7 @@ def main_hybrid_a(heu, start_pos, end_pos, reverse, extra, grid_on):
         print('Could not find safe start or end position.')
         return
 
-    car  = SimpleCar(env, start_pos, end_pos, l=0.3)  # Fix 3 — l=0.3
+    car  = SimpleCar(env, start_pos, end_pos, l=0.3)  
     grid = Grid(env)
 
     hastar = HybridAstar(car, grid, reverse, unit_theta=pi/36)
@@ -684,6 +688,88 @@ WP_ANGLE = {
 }
 
 
+# STP Temporal Planner paths
+STP_DIR     = os.path.expanduser("~") + "/Documents/teknarobotics/TTK4192_CA4/catkin_ws/src/temporal-planning-main/temporal-planning"
+STP_DOMAIN  = STP_DIR + "/domains/ttk4192/domain/PDDL_domain_1.pddl"
+STP_PROBLEM = STP_DIR + "/domains/ttk4192/problem/PDDL_problem_table4.pddl"
+STP_PLAN    = STP_DIR + "/tmp_sas_plan.1"
+
+# Waypoints where pumps live (used to route take_picture to the right executor branch)
+PUMP_WAYPOINTS = {"waypoint5", "waypoint6"}
+
+
+def run_stp_planner():
+    """
+    Call the STP temporal planner as a subprocess and return a time-sorted
+    list of raw action strings, e.g. ["move turtlebot0 waypoint0 waypoint1 d01", ...].
+    Returns None if the planner fails or produces no output file.
+    """
+    cmd = ["python2.7", "bin/plan.py", "stp-2", STP_DOMAIN, STP_PROBLEM]
+    print("Running STP planner...")
+    result = subprocess.run(cmd, cwd=STP_DIR, capture_output=True, text=True)
+    print(result.stdout)
+    if result.returncode != 0:
+        print("STP planner failed:", result.stderr)
+        return None
+
+    if not os.path.exists(STP_PLAN):
+        print("Plan file not found:", STP_PLAN)
+        return None
+
+    actions = []
+    with open(STP_PLAN, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            match = re.search(r'\(\s*(.*?)\s*\)', line)
+            if not match:
+                continue
+            time_match = re.match(r'([\d.]+):', line)
+            start_time = float(time_match.group(1)) if time_match else 0.0
+            actions.append((start_time, match.group(1)))
+
+    actions.sort(key=lambda x: x[0])
+    return [a[1] for a in actions]
+
+
+def translate_stp_action(action_str):
+    """
+    Convert a raw STP action string to the token format expected by the
+    executor's if/elif dispatch below.
+
+    STP output          →  executor token
+    ──────────────────────────────────────────────────────
+    move ... FROM TO r  →  move_robot ... FROM TO r
+    take_picture ... WP →  check_pump_picture_ir ...      (if WP is a pump waypoint)
+                        →  check_seals_valve_picture_eo ... (otherwise)
+    manipulate_valve ...→  manipulate_valve ...
+    charge_battery ...  →  charge_battery ...
+    charge ...          →  charge_battery ...
+    """
+    tokens = action_str.split()
+    name = tokens[0]
+
+    if name == "move":
+        return "move_robot " + " ".join(tokens[1:])
+
+    elif name == "take_picture":
+        wp = tokens[2] if len(tokens) > 2 else ""
+        if wp in PUMP_WAYPOINTS:
+            return "check_pump_picture_ir " + " ".join(tokens[1:])
+        else:
+            return "check_seals_valve_picture_eo " + " ".join(tokens[1:])
+
+    elif name == "manipulate_valve":
+        return "manipulate_valve " + " ".join(tokens[1:])
+
+    elif name in ("charge_battery", "charge"):
+        return "charge_battery " + " ".join(tokens[1:])
+
+    # unknown — pass through unchanged so it shows up as unrecognised in the log
+    return action_str
+
+
 #4) Program here the turtlebot actions (based in your AI planner)
 """
 Turtlebot 3 actions-------------------------------------------------------------------------
@@ -713,7 +799,7 @@ def take_inspection_image_EO(prefix, topic_name="/camera/rgb/image_raw"):
     filename = prefix + dt_string + ".jpg"
 
     home_dir = os.path.expanduser("~")
-    file_destination = home_dir + "/catkin_ws/src/assigment4_ttk4192/scripts"
+    file_destination = home_dir + "/Documents/teknarobotics/TTK4192_CA4/turtlebot3-files/assigment4_ttk4192/scripts"
     img_path = os.path.join(file_destination, filename)
 
     os.makedirs(file_destination, exist_ok=True)
@@ -906,10 +992,84 @@ def charge_battery():
     print("Battery charged")
 
 
-# Manipulate the robot arm
+# Arm joint positions (radians) for the OpenManipulator-X
+_ARM_HOME     = [0.0, -1.05,  0.35,  0.70]   # safe upright rest pose
+_ARM_REACH    = [0.0, -0.50,  0.30,  0.20]   # slight tilt down, stays close to robot body
+_GRIPPER_OPEN  =  0.010                        # gripper fully open
+_GRIPPER_CLOSE = -0.010                        # gripper closed (grasping)
+
+
+def _send_arm_goal(positions, move_time=2.0):
+    """Send a single joint-space trajectory point to the arm controller and wait."""
+    client = actionlib.SimpleActionClient(
+        '/arm_controller/follow_joint_trajectory',
+        FollowJointTrajectoryAction
+    )
+    if not client.wait_for_server(timeout=rospy.Duration(5.0)):
+        rospy.logwarn("arm_controller action server not available — skipping arm move")
+        return False
+
+    point = JointTrajectoryPoint()
+    point.positions = positions
+    point.time_from_start = rospy.Duration(move_time)
+
+    traj = JointTrajectory()
+    traj.joint_names = ['joint1', 'joint2', 'joint3', 'joint4']
+    traj.points = [point]
+
+    goal = FollowJointTrajectoryGoal()
+    goal.trajectory = traj
+    client.send_goal(goal)
+    client.wait_for_result(rospy.Duration(move_time + 3.0))
+    return True
+
+
+def _send_gripper_goal(position, move_time=1.0):
+    """Send a gripper open/close command and wait."""
+    client = actionlib.SimpleActionClient(
+        '/gripper_controller/follow_joint_trajectory',
+        FollowJointTrajectoryAction
+    )
+    if not client.wait_for_server(timeout=rospy.Duration(5.0)):
+        rospy.logwarn("gripper_controller action server not available — skipping gripper move")
+        return False
+
+    point = JointTrajectoryPoint()
+    point.positions = [position]
+    point.time_from_start = rospy.Duration(move_time)
+
+    traj = JointTrajectory()
+    traj.joint_names = ['gripper']
+    traj.points = [point]
+
+    goal = FollowJointTrajectoryGoal()
+    goal.trajectory = traj
+    client.send_goal(goal)
+    client.wait_for_result(rospy.Duration(move_time + 2.0))
+    return True
+
+
 def Manipulate_OpenManipulator_x():
-    print("Executing manipulate the robot arm to open valve x")
-    time.sleep(5)
+    """
+    Demonstrate arm and gripper movement without reaching far forward.
+    Tilts the arm slightly down, opens/closes the gripper, then returns home.
+    """
+    print("Executing manipulate the robot arm to open valve")
+
+    _send_gripper_goal(_GRIPPER_OPEN,  move_time=1.0)   # open gripper
+    rospy.sleep(0.5)
+
+    _send_arm_goal(_ARM_REACH, move_time=2.5)            # small tilt toward valve
+    rospy.sleep(1.0)
+
+    _send_gripper_goal(_GRIPPER_CLOSE, move_time=1.0)   # close gripper
+    rospy.sleep(1.0)
+
+    _send_gripper_goal(_GRIPPER_OPEN,  move_time=1.0)   # open gripper again
+    rospy.sleep(0.5)
+
+    _send_arm_goal(_ARM_HOME, move_time=2.5)             # return to home
+    print("Manipulation complete")
 
 
 
@@ -945,69 +1105,27 @@ if __name__ == '__main__':
         # aea 3
         # aea 4
         
-       
-        a_plan=0   
-        
         # 5.1) Starting the AI Planner
-        if a_plan==1:
-           print(" ---Executing Graph planner --- ")
-           time.sleep(1)
-   
-           if len(sys.argv) != 1 and len(sys.argv) != 3:
-                print("Usage: GraphPlan.py domainName problemName")
-                exit()
-                
-           # Here you need to load your PDDL domain
-           home = os.path.expanduser("~")
-           dir_p = home + "/catkin_ws/src/assigment4_ttk4192/scripts/ai_planner_modules/PDDL_domain/"
-           domain = dir_p+"PDDL_domain_1.pddl"
-           problem = dir_p+"PDDL_problem_1.pddl"
-           if len(sys.argv) == 3:
-                domain = str(sys.argv[1])
-                problem = str(sys.argv[2])
-           gp = GraphPlan(domain, problem)
-           start = time.time()
-           plan = gp.graphPlan()
-           elapsed = time.time() - start
-           plan=np.array(plan)
-           l=[]
-           
-           #print([plan.action for action in plan])
-           if plan is not None:
-                print("Plan found with %d actions in %.2f seconds" %
-                    (len([act for act in plan if not act.isNoOp()]), elapsed))            
-                for i in range(len(plan)):
-                    #print(plan[i])
-                    l.append(plan[i])
-           else:
-                print("Could not find a plan in %.2f seconds" % elapsed)
+        print(" --- Running STP Temporal Planner --- ")
+        raw_actions = run_stp_planner()
 
-            #print(l[1])
-           m=[]
-           for i in range(len(l)):
-                a=str(l[i])
-                for k in a:
-                    if a[0].isupper():
-                        m.append(a)
-                        break
-           plan_general=m
-           #print("Plan in graph -plan",plan_general)
-           # expansion of names of actions graph notation
-           for i in range(len(plan_general)):
-               if plan_general[i]=="Pr2":
-                   plan_general[i]="taking_photo"
-               if plan_general[i]=="Tr3":
-                   plan_general[i]="making_turn"
-           print("Plan: ",plan_general)
+        if raw_actions:
+            plan_general = [translate_stp_action(a) for a in raw_actions]
+            print("Plan from STP planner:")
+            for i, step in enumerate(plan_general):
+                print("  {}: {}".format(i+1, step))
         else:
-           #time.sleep()
-           #print("No valid option")
-           print(" ---Skipping AI planner, testing GNC only --- ")
-           #plan_general = ["move_robot waypoint0 waypoint1", "taking_photo"]
-           plan_general = [
+            print("STP planner failed — using fallback plan")
+            plan_general = [
                 "move_robot turtlebot0 waypoint0 waypoint1 d01",
+                "check_seals_valve_picture_eo turtlebot0 waypoint1",
                 "move_robot turtlebot0 waypoint1 waypoint2 d12",
-                "taking_photo"
+                "check_seals_valve_picture_eo turtlebot0 waypoint2",
+                "move_robot turtlebot0 waypoint2 waypoint5 d25",
+                "check_pump_picture_ir turtlebot0 waypoint5",
+                "move_robot turtlebot0 waypoint5 waypoint6 d56",
+                "check_pump_picture_ir turtlebot0 waypoint6",
+                "move_robot turtlebot0 waypoint6 waypoint3 d63",
             ]
             
     
