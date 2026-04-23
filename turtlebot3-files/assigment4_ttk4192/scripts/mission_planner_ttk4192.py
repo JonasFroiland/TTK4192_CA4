@@ -467,23 +467,26 @@ class map_grid_robplan:
     """
     def __init__(self):
         self.obs = [
-            # Outer walls (safe_dis=0.02)
-            [0.0,   0.0,   3.3,   0.05,  0.02],  # wall_south_1
-            [3.275, 0.0,   0.05,  0.2,   0.02],  # wall_south_2
-            [3.3,   0.175, 1.91,  0.05,  0.02],  # wall_south_3
-            [0.0,   2.725, 5.21,  0.05,  0.02],  # wall_north
-            [0.0,   0.0,   0.025, 2.75,  0.02],  # wall_west
-            [5.185, 0.0,   0.025, 2.75,  0.02],  # wall_east
-            # West wall protrusion (safe_dis=0.02)
-            [0.0,   1.0,   0.5,   0.2,   0.02],  # wall_west_protrusion
-            # Interior obstacles (safe_dis=0.05)
-            [1.2,   1.65,  0.2,   0.4,   0.05],  # obstacle_1
-            [2.5,   1.65,  0.4,   0.4,   0.05],  # obstacle_2
-            # Equipment boxes (safe_dis=0.05)
-            [1.55,  0.7,   0.5,   0.2,   0.05],  # equipment_valve0
-            [3.06,  0.7,   0.5,   0.2,   0.05],  # equipment_valve1
-            [3.61,  1.85,  0.4,   0.2,   0.05],  # equipment_pump1
-        ]
+	    # Outer walls
+	    [0.0,   0.0,   3.3,   0.05,  0.06],  # wall_south_1
+	    [3.275, 0.0,   0.05,  0.2,   0.06],  # wall_south_2
+	    [3.3,   0.175, 1.91,  0.05,  0.06],  # wall_south_3
+	    [0.0,   2.725, 5.21,  0.05,  0.06],  # wall_north
+	    [0.0,   0.0,   0.025, 2.75,  0.06],  # wall_west
+	    [5.185, 0.0,   0.025, 2.75,  0.06],  # wall_east
+
+	    # West wall protrusion
+	    [0.0,   1.0,   0.5,   0.2,   0.08],  # wall_west_protrusion
+
+	    # Interior obstacles
+	    [1.2,   1.65,  0.2,   0.4,   0.10],  # obstacle_1
+	    [2.5,   1.65,  0.4,   0.4,   0.10],  # obstacle_2
+
+	    # Equipment boxes
+	    [1.55,  0.7,   0.5,   0.2,   0.12],  # equipment_valve0
+	    [3.06,  0.7,   0.5,   0.2,   0.12],  # equipment_valve1
+	    [3.61,  1.85,  0.4,   0.2,   0.12],  # equipment_pump1
+	]
 
 
 # Fix 5 — find_safe_pos helper
@@ -548,7 +551,7 @@ def main_hybrid_a(heu, start_pos, end_pos, reverse, extra, grid_on):
     xl, yl   = [], []
     xl_np1, yl_np1 = [], []
     carl = []
-    dt_s = int(25)
+    dt_s = int(10)
 
     for i in range(len(path)):
         xl.append(path[i].pos[0])
@@ -1197,8 +1200,20 @@ if __name__ == '__main__':
                 check_seals_valve_picture_eo()
             
             elif plan_temp[0] == "manipulate_valve":
-                print("Executing manipulate_valve action")
-                Manipulate_OpenManipulator_x()
+                print("Executing manipulate_valve action not implemented ...")
+                #Manipulate_OpenManipulator_x()
+                
+                print("Executing check_seals_valve_picture_eo action")
+
+                robot_x, robot_y, _ = get_current_pose()
+                closest_wp = get_closest_waypoint(robot_x, robot_y)
+                print("Closest waypoint:", closest_wp)
+
+                target_theta = WP_ANGLE[closest_wp]
+                rotate_to_heading(target_theta)
+
+                check_seals_valve_picture_eo()
+                
 
 
             elif plan_temp[0] == "charge_battery":
