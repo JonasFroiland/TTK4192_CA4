@@ -466,27 +466,27 @@ class map_grid_robplan:
     Map dimensions: 5.21 x 2.75 m
     """
     def __init__(self):
-        self.obs = [
-	    # Outer walls
-	    [0.0,   0.0,   3.3,   0.05,  0.06],  # wall_south_1
-	    [3.275, 0.0,   0.05,  0.2,   0.06],  # wall_south_2
-	    [3.3,   0.175, 1.91,  0.05,  0.06],  # wall_south_3
-	    [0.0,   2.725, 5.21,  0.05,  0.06],  # wall_north
-	    [0.0,   0.0,   0.025, 2.75,  0.06],  # wall_west
-	    [5.185, 0.0,   0.025, 2.75,  0.06],  # wall_east
+	    self.obs = [
+		# Outer walls
+		[0.0,   0.0,   3.3,   0.05,  0.06],
+		[3.275, 0.0,   0.05,  0.2,   0.06],
+		[3.3,   0.175, 1.91,  0.05,  0.06],
+		[0.0,   2.725, 5.21,  0.05,  0.06],
+		[0.0,   0.0,   0.025, 2.75,  0.06],
+		[5.185, 0.0,   0.025, 2.75,  0.06],
 
-	    # West wall protrusion
-	    [0.0,   1.0,   0.5,   0.2,   0.08],  # wall_west_protrusion
+		# West wall protrusion
+		[0.0,   1.0,   0.5,   0.2,   0.08],
 
-	    # Interior obstacles
-	    [1.2,   1.65,  0.2,   0.4,   0.10],  # obstacle_1
-	    [2.5,   1.65,  0.4,   0.4,   0.10],  # obstacle_2
+		# Interior obstacles
+		[1.2,   1.65,  0.2,   0.4,   0.10],  # obstacle_1
+		[2.5,   1.65,  0.4,   0.4,   0.08],  # obstacle_2
 
-	    # Equipment boxes
-	    [1.55,  0.7,   0.5,   0.2,   0.12],  # equipment_valve0
-	    [3.06,  0.7,   0.5,   0.2,   0.12],  # equipment_valve1
-	    [3.61,  1.85,  0.4,   0.2,   0.12],  # equipment_pump1
-	]
+		# Equipment boxes
+		[1.55,  0.7,   0.5,   0.2,   0.12],  # equipment_valve0
+		[3.06,  0.7,   0.5,   0.2,   0.12],  # equipment_valve1
+		[3.61,  1.85,  0.4,   0.2,   0.05],  # equipment_pump1
+	    ]
 
 
 # Fix 5 — find_safe_pos helper
@@ -667,8 +667,8 @@ WP1 = [1.8,  0.7 ]
 WP2 = [3.31, 0.9 ]
 WP3 = [3.21, 2.70]
 WP4 = [5.1,  0.3 ]
-WP5 = [0.8,  2.70]
-WP6 = [3.81, 1.85]
+WP5 = [0.80, 2.45]
+WP6 = [3.45, 1.55]
 
 WAYPOINT_MAP = {
     "waypoint0": WP0,
@@ -694,7 +694,7 @@ WP_ANGLE = {
 # STP Temporal Planner paths
 STP_DIR     = os.path.expanduser("~") + "/Documents/teknarobotics/TTK4192_CA4/catkin_ws/src/temporal-planning-main/temporal-planning"
 STP_DOMAIN  = STP_DIR + "/domains/ttk4192/domain/PDDL_domain_1.pddl"
-STP_PROBLEM = STP_DIR + "/domains/ttk4192/problem/PDDL_problem_table4.pddl"
+STP_PROBLEM = STP_DIR + "/domains/ttk4192/problem/PDDL_problem_1_test.pddl"
 STP_PLAN    = STP_DIR + "/tmp_sas_plan.1"
 
 # Waypoints where pumps live (used to route take_picture to the right executor branch)
