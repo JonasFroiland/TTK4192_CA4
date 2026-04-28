@@ -314,9 +314,9 @@ class HybridAstar:
 
         self.w1 = 0.95
         self.w2 = 0.05
-        self.w3 = 0.30
-        self.w4 = 0.10
-        self.w5 = 2.00
+        self.w3 = 1.50  # penalty for changing steering angle (0.3)
+        self.w4 = 0.80  # penalty for steering/turning (0.1)
+        self.w5 = 3.00  # penalty for reverse (2.0)
 
         self.thetas = get_discretized_thetas(self.unit_theta)
 
@@ -418,7 +418,7 @@ class HybridAstar:
         open_   = [root]
         count   = 0
 
-        while open_:
+        while open_ and count < 5000:
             count += 1
             best  = min(open_, key=lambda x: x.f)
             open_.remove(best)
@@ -453,6 +453,7 @@ class HybridAstar:
                             break
                     open_.remove(child)
                     open_.append(child)
+        print("Hybrid A* stopped: max iterations reached")
 
         return None, None
 
@@ -479,13 +480,13 @@ class map_grid_robplan:
 		[0.0,   1.0,   0.5,   0.2,   0.08],
 
 		# Interior obstacles
-		[1.2,   1.65,  0.2,   0.4,   0.10],  # obstacle_1
+		[1.2,   1.65,  0.2,   0.4,   0.08],  # obstacle_1
 		[2.5,   1.65,  0.4,   0.4,   0.08],  # obstacle_2
 
 		# Equipment boxes
-		[1.55,  0.7,   0.5,   0.2,   0.12],  # equipment_valve0
-		[3.06,  0.7,   0.5,   0.2,   0.12],  # equipment_valve1
-		[3.61,  1.85,  0.4,   0.2,   0.05],  # equipment_pump1
+		[1.55,  0.7,   0.5,   0.2,   0.02],  # equipment_valve0
+		[3.06,  0.7,   0.5,   0.2,   0.02],  # equipment_valve1
+		[3.61,  1.85,  0.4,   0.2,   0.02],  # equipment_pump1
 	    ]
 
 
@@ -524,7 +525,7 @@ def main_hybrid_a(heu, start_pos, end_pos, reverse, extra, grid_on):
 
     if start_pos is None or end_pos is None:
         print('Could not find safe start or end position.')
-        return
+        return False
 
     car  = SimpleCar(env, start_pos, end_pos, l=0.3)  
     grid = Grid(env)
@@ -537,7 +538,7 @@ def main_hybrid_a(heu, start_pos, end_pos, reverse, extra, grid_on):
 
     if not path:
         print('No valid path!')
-        return
+        return False
 
     path = path[::5] + [path[-1]]
 
@@ -642,6 +643,8 @@ def main_hybrid_a(heu, start_pos, end_pos, reverse, extra, grid_on):
     # plt.show()
     plt.close(fig)
 
+    return True
+    
 
 # Fix 4 and 6 — updated compute_path using real waypoint coordinates
 def compute_path(wp_from, wp_to, heading_from=0, heading_to=0):
@@ -658,17 +661,20 @@ def compute_path(wp_from, wp_to, heading_from=0, heading_to=0):
 
     start_pos = [wp_from[0], wp_from[1], heading_from]
     end_pos   = [wp_to[0],   wp_to[1],   heading_to]
-    main_hybrid_a(args.heu, start_pos, end_pos, args.r, args.e, args.g)
+    #return main_hybrid_a(args.heu, start_pos, end_pos, args.r, args.e, args.g)
+    return main_hybrid_a(args.heu, start_pos, end_pos, True, True, args.g)
 
 
 # Waypoint coordinates — use these when calling compute_path
 WP0 = [0.1,  0.2 ]
-WP1 = [1.8,  0.7 ]
-WP2 = [3.31, 0.9 ]
+WP1 = [1.80, 0.35]
+WP2 = [3.31, 1.3 ]
 WP3 = [3.21, 2.70]
-WP4 = [5.1,  0.3 ]
-WP5 = [0.80, 2.45]
-WP6 = [3.45, 1.55]
+WP4 = [4.9,  0.4 ]
+WP5 = [0.80, 2.00]
+WP6 = [3.81, 1.5]
+
+
 
 WAYPOINT_MAP = {
     "waypoint0": WP0,
@@ -694,8 +700,8 @@ WP_ANGLE = {
 # STP Temporal Planner paths
 STP_DIR     = os.path.expanduser("~") + "/Documents/teknarobotics/TTK4192_CA4/catkin_ws/src/temporal-planning-main/temporal-planning"
 STP_DOMAIN  = STP_DIR + "/domains/ttk4192/domain/PDDL_domain_1.pddl"
-STP_PROBLEM = STP_DIR + "/domains/ttk4192/problem/PDDL_problem_1_test.pddl"
-STP_PLAN    = STP_DIR + "/tmp_sas_plan.1"
+STP_PROBLEM = STP_DIR + "/domains/ttk4192/problem/PDDL_problem_1.pddl"
+STP_PLAN    = STP_DIR + "/tmp_sas_plan"
 
 # Waypoints where pumps live (used to route take_picture to the right executor branch)
 PUMP_WAYPOINTS = {"waypoint5", "waypoint6"}
@@ -707,6 +713,8 @@ def run_stp_planner():
     list of raw action strings, e.g. ["move turtlebot0 waypoint0 waypoint1 d01", ...].
     Returns None if the planner fails or produces no output file.
     """
+    if os.path.exists(STP_PLAN):
+        os.remove(STP_PLAN)
     cmd = ["python2.7", "bin/plan.py", "stp-2", STP_DOMAIN, STP_PROBLEM]
     print("Running STP planner...")
     result = subprocess.run(cmd, cwd=STP_DIR, capture_output=True, text=True)
@@ -834,15 +842,29 @@ def move_robot_between_waypoints(from_wp_name, to_wp_name, controller):
     wp_to = WAYPOINT_MAP[to_wp_name]
 
     print(f"Computing Hybrid A* path {from_wp_name} -> {to_wp_name}")
+    
+    robot_x, robot_y, robot_theta = get_current_pose()
 
     dx = wp_to[0] - wp_from[0]
     dy = wp_to[1] - wp_from[1]
-    heading = float(np.arctan2(dy, dx))
+    goal_heading = float(np.arctan2(dy, dx))
+    
+    success = compute_path(
+	    wp_from,
+	    wp_to,
+	    heading_from=robot_theta,
+	    heading_to=goal_heading
+	)
 
-    compute_path(wp_from, wp_to, heading_from=heading, heading_to=heading)
+    
+    if not success:
+        print("Skipping movement because Hybrid A* failed.")
+        return False
+
 
     print(f"Executing path following {from_wp_name} -> {to_wp_name}")
     controller.follow_waypoints(WAYPOINTS)
+    return True
     
 
 def making_turn_exe():
